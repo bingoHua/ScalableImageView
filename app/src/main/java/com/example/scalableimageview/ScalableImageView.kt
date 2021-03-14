@@ -8,6 +8,7 @@ import android.util.AttributeSet
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
+import androidx.core.animation.doOnEnd
 import androidx.core.view.GestureDetectorCompat
 import kotlin.math.max
 import kotlin.math.min
@@ -32,7 +33,14 @@ class ScalableImageView(context: Context, attrs: AttributeSet?) : View(context, 
         }
 
     private val scaleAnimator: ObjectAnimator by lazy {
-        ObjectAnimator.ofFloat(this, "scaleFraction", 0f, 1f)
+        ObjectAnimator.ofFloat(this, "scaleFraction", 0f, 1f).apply {
+            doOnEnd {
+                if (!big) {
+                    offsetX = 0f
+                    offsetY = 0f
+                }
+            }
+        }
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -56,7 +64,7 @@ class ScalableImageView(context: Context, attrs: AttributeSet?) : View(context, 
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        canvas.translate(offsetX, offsetY)
+        canvas.translate(offsetX * scaleFraction, offsetY * scaleFraction)
         val scale = smallScale + (bigScale - smallScale) * scaleFraction
         canvas.scale(scale, scale, width / 2f, height / 2f)
         canvas.drawBitmap(bitmap, originOffsetX, originOffsetY, paint)
@@ -97,9 +105,11 @@ class ScalableImageView(context: Context, attrs: AttributeSet?) : View(context, 
         return false
     }
 
-    override fun onDoubleTap(e: MotionEvent?): Boolean {
+    override fun onDoubleTap(e: MotionEvent): Boolean {
         big = !big
         if (big) {
+            offsetX = (e.x - width / 2f) * (1 - bigScale / smallScale)
+            offsetY = (e.y - height / 2f) * (1 - bigScale / smallScale)
             scaleAnimator.start()
         } else {
             scaleAnimator.reverse()
